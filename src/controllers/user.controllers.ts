@@ -10,7 +10,7 @@ export async function createRoom(req: Request, res: Response) {
 
         const room = await Room.create({
             slug,
-            userId,
+            admin:userId,
             roomId
         })
 
@@ -18,6 +18,8 @@ export async function createRoom(req: Request, res: Response) {
             roomId
         })
     } catch (err) {
+        //@ts-ignore
+        console.log(err.message)
         res.status(500).json({
             message: "Failed to create room, try again later."
         })

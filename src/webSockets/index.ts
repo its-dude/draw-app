@@ -11,18 +11,18 @@ type User = {
 }
 let users: User[] = [];
 
-function checkUser (token: string): Boolean {
+function checkUser (token: string): string | null {
     const decoded = jwt.verify(token as string, config.jwt.secret as Secret);
 
         if ( typeof decoded == "string"){
-          return false;
+          return null;
         }
 
         if ( !decoded || !decoded.userId ){
-          return false          
+          return null          
         }
 
-        return true;
+        return decoded.userId;
 }
 
 export default function initSocket(server: Server){
@@ -38,13 +38,19 @@ export default function initSocket(server: Server){
 
         const queryParams = new URLSearchParams(url.split('?')[1]);
         const token = queryParams.get("token") as string;
-        const authorizedUser = checkUser(token);
+        const userId = checkUser(token);
 
-        if( !authorizedUser ) {
+        if( userId === null ) {
             ws.send("Not authorized");
             ws.close();
             return;
         }
+
+        users.push({
+            userId,
+            rooms: [],
+            ws
+        })
 
         ws.on('message', async (data) => {
             const parsedData = JSON.parse(data.toString());

@@ -4,8 +4,8 @@ dotenv.config()
 
 const config = {
     jwt: {
-        secret: process.env.JWT_SECRET,
-        expires_in: process.env.JWT_EXPIRES_IN,
+        secret: process.env.JWT_SECRET as string,
+        expires_in: process.env.JWT_EXPIRES_IN as any,
     },
     mongo:{
         uri: process.env.MONGO_URI

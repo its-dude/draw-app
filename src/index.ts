@@ -1,13 +1,16 @@
 import express from "express"
-import authRouter from "./routes/auth.routes"
+import {authRouter, userRouter} from "./routes"
 import { createServer } from "http"
 import { connectDB } from "./config/db.config"
+import initSocket  from "./webSockets"
 
 const app = express()
 const server = createServer(app)
+initSocket(server)
 
 app.use(express.json())
 app.use('/api/auth', authRouter)
+app.use('/api/user', userRouter)
 
 app.get('/',(req,res)=>res.send("hello from the backend"))
 

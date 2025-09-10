@@ -69,10 +69,10 @@ export default function initSocket(server: Server){
                 if( !room ) {
                     return ws.send("Invalid room id");
                 }
-
+                const isAdmin = (room.admin as any) == user.userId
                 user.rooms.push(parsedData.roomId);
 
-              return ws.send(`connected to room ${room.slug}`)
+              return ws.send(`connected to room ${room.slug} ${ isAdmin?"you are admin": ""}`)
             }
 
             if (parsedData.type === "leave_room") {
@@ -111,7 +111,7 @@ export default function initSocket(server: Server){
                 }                
 
                 users.forEach( user => {
-                    if(user.rooms.includes(parsedData.roomId)) {
+                    if(user.rooms.includes(parsedData.roomId) && user.ws != ws) {
                         user.ws.send( JSON.stringify(parsedData.message) )
                     }
                 })

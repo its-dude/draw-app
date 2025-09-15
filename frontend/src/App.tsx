@@ -1,33 +1,39 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
+import { useEffect, useRef, useState} from 'react'
 import './App.css'
+import { initDraw } from './draw'
 
 function App() {
-  const [count, setCount] = useState(0)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const [shapeType, setShapeType] = useState<'rect' | 'circle' | 'line' | 'pencil'>('rect')
+
+  useEffect(() => {
+    if (canvasRef.current) {
+      const canvas = canvasRef.current
+      const ctx = canvasRef.current.getContext('2d')
+
+      if (ctx) {
+        initDraw({ctx, canvas})
+      }
+
+    }
+  }, [canvasRef])
+
+  useEffect(()=>{
+    //@ts-ignore
+    window.shapeType = shapeType
+  }, [shapeType])
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+      <div className='h-screen w-screen bg-black text-white'>
+        <div className='absolute top-0 left-[40%] w-84 mx-auto bg-white text-black flex gap-5 justify-around'>
+          <button className='hover:text-gray-500' onClick={()=>setShapeType('rect')}>rectangle</button>
+          <button className='hover:text-gray-500' onClick={()=>setShapeType('circle')}>circle</button>
+          <button className='hover:text-gray-500' onClick={()=>setShapeType('line')}>line</button>
+          <button className='hover:text-gray-500' onClick={()=>setShapeType('pencil')}>pencil</button>
+        </div>
+        <canvas ref={canvasRef} width={"1026"} height={"500"} className='border rounded' ></canvas>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
     </>
   )
 }

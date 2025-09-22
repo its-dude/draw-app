@@ -12,6 +12,9 @@ type User = {
 let users: User[] = [];
 
 function checkUser (token: string): string | null {
+    if(!token || token === ""){
+        return null
+    }
     const decoded = jwt.verify(token as string, config.jwt.secret as Secret);
 
         if ( typeof decoded == "string"){
@@ -37,7 +40,11 @@ export default function initSocket(server: Server){
         }
 
         const queryParams = new URLSearchParams(url.split('?')[1]);
-        const token = queryParams.get("token") as string;
+        const token = queryParams.get("token");
+        if(!token){
+            ws.close();
+            return;
+        }
         const userId = checkUser(token);
 
         if( userId === null ) {

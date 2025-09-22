@@ -4,7 +4,7 @@ type Point = {
     thickness: number
 }
 
-type Tool = 'rect' | 'circle' | 'line' | 'pencil'
+type Tool = 'rect' | 'circle' | 'line' | 'pencil' 
 
 type Shape = {
     type: "rect",
@@ -104,11 +104,11 @@ export class Canvas {
             }
 
         })
-        console.log('inside clear ',this.existingShapes)
+        console.log('inside clear ', this.existingShapes)
 
     }
 
-    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil') {
+    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil' ) {
         this.selectedTool = selectedTool;
     }
 
@@ -199,7 +199,7 @@ export class Canvas {
     }
 
     mouseUpHandler = (e: MouseEvent) => {
-console.log('inside up')
+        console.log('inside up')
         this.clicked = false
         const width = e.clientX - this.startX
         const height = e.clientY - this.startY
@@ -247,7 +247,7 @@ console.log('inside up')
     mouseMoveHandler = (e: MouseEvent) => {
 
         if (this.clicked) {
-console.log('move tool =', this.selectedTool);
+            console.log('move tool =', this.selectedTool);
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
             this.ctx.fillStyle = 'rgb(255, 255, 255)'
 

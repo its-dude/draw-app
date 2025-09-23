@@ -2,11 +2,11 @@ import { useEffect, useRef, useState } from 'react'
 import '../App.css'
 import { Canvas } from '../draw/canvas'
 import axios from 'axios'
-import { SECRET } from '../config'
+import { getSecret } from '../config'
 import { JoinShareModal } from "../components/RoomModal";
 import { DrawingArea } from '../components/DrawingArea'
 
-export function DrawingRoom() {
+export function DrawingRoom({userId}:{userId:string|null}) {
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil'>("rect")
@@ -16,7 +16,8 @@ export function DrawingRoom() {
     const [rooms, setRooms] = useState()
     const [joinRoomId, setJoinRoomId] = useState<string>("")
     const [modalType, setModalType] = useState<'join_room' | 'share_room' | null>(null);
-
+    const SECRET = getSecret()
+    
     useEffect(() => {
 
         axios.get('http://localhost:3000/api/user/rooms', {
@@ -28,7 +29,7 @@ export function DrawingRoom() {
                 const rooms = result.data
 
                 if (rooms.length === 0) {
-                    axios.post('http://localhost:3000/api/user/room/create', { slug: "Room1" },
+                    axios.post('http://localhost:3000/api/user/room/create', { slug: `room_${userId}` },
                         {
                             headers: {
                                 Authorization: `Bearer ${SECRET}`

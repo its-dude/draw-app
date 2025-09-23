@@ -23,7 +23,9 @@ export const signup = async (req: Request, res: Response) => {
     const result = signupSchema.safeParse(body);
 
     if (!result.success) {
-      return res.status(403).json("Incorrect inputs")
+      return res.status(403).json({
+        message: "Incorrect inputs"
+      })
     }
 
     const isUserExists = await User.findOne({
@@ -43,7 +45,8 @@ export const signup = async (req: Request, res: Response) => {
     const token = jwt.sign({userId: user._id}, config.jwt.secret as Secret, {expiresIn: config.jwt.expires_in})
 
     res.json({
-      token
+      token,
+      userId: user._id
     })
  
   } catch (err) {
@@ -88,7 +91,8 @@ export const signin = async (req: Request, res: Response) => {
     const token = jwt.sign({userId: user._id}, config.jwt.secret as Secret, {expiresIn: config.jwt.expires_in })
 
     res.json({
-      token
+      token,
+      userId:user._id
     })
 
   } catch (err) {

@@ -1,14 +1,17 @@
 import type React from "react"
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 
 //@ts-ignore
-export function JoinRoomModal({ socket, joinRoomId, setJoinRoomId, onClose, modalType }: {
+export function JoinRoomModal({ socket, roomId, joinRoomId, setJoinRoomId, onClose, modalType }: {
   socket: WebSocket | null,
-  joinRoomId: string, setJoinRoomId: React.Dispatch<React.SetStateAction<string>>
+  roomId: string,
+  joinRoomId: string,
+  setJoinRoomId: React.Dispatch<React.SetStateAction<string>>,
   onClose: () => void
 }) {
 
   const joinRoomRef = useRef<HTMLDivElement>(null)
+  const [isReqestSent, setisRequestSent] = useState<boolean>(false)
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
@@ -25,6 +28,20 @@ export function JoinRoomModal({ socket, joinRoomId, setJoinRoomId, onClose, moda
     };
   }, [onClose, joinRoomRef]);
 
+  function onClickHandler() {
+    if (joinRoomId !== roomId) {
+      socket?.send(JSON.stringify(
+        {
+          type: "join_room",
+          roomId: joinRoomId
+        }
+      ))
+      setisRequestSent(true)
+      console.log("request sent")
+      
+    } 
+  }
+
   return <div id="join-room" className=' overlay fixed inset-0 bg-slate-400 flex items-center justify-center pointer-events-auto'>
     <div ref={joinRoomRef} className='w-82 h-max bg-white p-4 rounded-md flex flex-col text-start gap-2 '>
       <div>
@@ -32,12 +49,7 @@ export function JoinRoomModal({ socket, joinRoomId, setJoinRoomId, onClose, moda
         <input name='roomId' type="text" placeholder='Room Id' className='border w-full block px-4 py-2 outline-0 rounded-md' onChange={(e) => setJoinRoomId(e.target.value)} />
       </div>
       <div className='mx-auto'>
-        <button className='bg-purple-500 text-white px-4 py-2 rounded-md cursor-pointer' onClick={() => {
-          socket?.send(JSON.stringify({
-            type: "join_room",
-            roomId: joinRoomId
-          }))
-        }}>join</button>
+        <button className='bg-purple-500 text-white px-4 py-2 rounded-md cursor-pointer disabled:bg-purple-300' onClick={onClickHandler} disabled={isReqestSent} >{isReqestSent?"joining...":"join"}</button>
       </div>
     </div>
   </div>

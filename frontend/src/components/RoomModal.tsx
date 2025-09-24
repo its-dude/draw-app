@@ -11,8 +11,9 @@ export function JoinShareModal({ modalType, socket, joinRoomId, roomId, setJoinR
     setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
     socket: WebSocket | null
 }) {
-    return <div >
-        {modalType === 'join_room' && (<JoinRoomModal socket={socket} joinRoomId={joinRoomId} setJoinRoomId={setJoinRoomId} onClose={() => {
+
+    return <div>
+        {modalType === 'join_room' && (<JoinRoomModal socket={socket} roomId={roomId} joinRoomId={joinRoomId} setJoinRoomId={setJoinRoomId} onClose={() => {
             setTimeout(() => {
                 // @ts-ignore
                 setSelectedTool(window.selected)
@@ -22,7 +23,7 @@ export function JoinShareModal({ modalType, socket, joinRoomId, roomId, setJoinR
 
         {/*   @ts-ignore */}
 
-        {modalType === 'share_room' && (<ShareRoomModal roomId={roomId} onClose={() => {
+        {modalType === 'share_room' && (<ShareRoomModal roomId={roomId} setModalType={setModalType} onClose={() => {
             setTimeout(() => {
                 // @ts-ignore
                 setSelectedTool(window.selected)

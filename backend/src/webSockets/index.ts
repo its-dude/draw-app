@@ -52,7 +52,6 @@ export default function initSocket(server: Server) {
     const wss = new WebSocketServer({ server })
 
     wss.on('connection', function connection(ws, request) {
-        ws.send("you are connected via websocket");
         const url = request.url;
 
         if (!url) {
@@ -100,7 +99,10 @@ export default function initSocket(server: Server) {
                 const isAdmin = (room.admin as any) == user.userId
                 user.rooms.push(parsedData.roomId);
 
-                return;
+                ws.send(JSON.stringify({
+                    message:"room_joined",
+                    roomId: parsedData.roomId
+                }));
             }
 
             if (parsedData.type === "leave_room") {
@@ -160,7 +162,7 @@ export default function initSocket(server: Server) {
                         user.ws.send(JSON.stringify(parsedData.message))
                     }
                 })
-                
+
             }
 
         })

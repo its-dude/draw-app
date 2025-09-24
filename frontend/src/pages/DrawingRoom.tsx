@@ -6,18 +6,18 @@ import { getSecret } from '../config'
 import { JoinShareModal } from "../components/RoomModal";
 import { DrawingArea } from '../components/DrawingArea'
 
-export function DrawingRoom({userId}:{userId:string|null}) {
+export function DrawingRoom({ userId }: { userId: string | null }) {
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil'>("rect")
     const [socket, setSocket] = useState<WebSocket | null>(null)
     const [canvas, setCanvas] = useState<Canvas | null>(null)
-    const [roomId, setRoomId] = useState("")
+    const [roomId, setRoomId] = useState<string>("")
     const [rooms, setRooms] = useState()
     const [joinRoomId, setJoinRoomId] = useState<string>("")
     const [modalType, setModalType] = useState<'join_room' | 'share_room' | null>(null);
     const SECRET = getSecret()
-    
+
     useEffect(() => {
 
         axios.get('http://localhost:3000/api/user/rooms', {
@@ -63,17 +63,19 @@ export function DrawingRoom({userId}:{userId:string|null}) {
             console.log("websocket is opened")
             console.log(roomId)
             ws.send(data)
+
         }
 
         ws.onclose = () => console.log('websocket closed')
+
     }, [roomId])
 
     useEffect(() => {
-        if (canvasRef.current && roomId && socket ) {
+        if (canvasRef.current && roomId && socket) {
             canvasRef.current.width = window.innerWidth
             canvasRef.current.height = window.innerHeight
 
-            const c = new Canvas(canvasRef.current, roomId, socket)
+            const c = new Canvas(canvasRef.current, roomId, joinRoomId,setRoomId, setModalType, socket)
             setCanvas(c)
 
             return () => {
@@ -81,7 +83,7 @@ export function DrawingRoom({userId}:{userId:string|null}) {
             }
 
         }
-    }, [roomId,canvasRef, socket])
+    }, [roomId, canvasRef,joinRoomId, socket])
 
 
     useEffect(() => {
@@ -100,13 +102,13 @@ export function DrawingRoom({userId}:{userId:string|null}) {
             setModalType={setModalType}
             setJoinRoomId={setJoinRoomId}
         />
-        
+
         {
-          !socket && <div>connecting...</div>  
+            !socket && <div>connecting...</div>
         }
-        
+
         {
-            socket && <DrawingArea setModalType={setModalType} selectedTool={selectedTool} setSelectedTool={setSelectedTool} canvasRef={canvasRef}/>
+            socket && <DrawingArea setModalType={setModalType} selectedTool={selectedTool} setSelectedTool={setSelectedTool} canvasRef={canvasRef} />
         }
     </>
 }

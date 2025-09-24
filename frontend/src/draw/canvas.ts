@@ -1,6 +1,7 @@
 import axios from "axios"
 import { Backend_URL } from "../config"
 import { getSecret } from "../config"
+import type React from "react"
 
 type Point = {
     x: number,
@@ -40,13 +41,16 @@ export class Canvas {
     private ctx: CanvasRenderingContext2D
     private existingShapes: Shape[]
     private selectedTool: Tool = 'rect'
+    private roomId: string;
+    private joinRoomId: string;
+    private setRoomId: React.Dispatch<React.SetStateAction<string>>;
+    private setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>;
     private startX: number = 0
     private startY: number = 0
     private radius: number = 0
     private lastX: number = 0
     private lastY: number = 0
     private clicked: boolean = false
-    private roomId: string
     private ws: WebSocket
 
     private pencil: {
@@ -54,44 +58,58 @@ export class Canvas {
         points: Point[]
     } | null = { type: 'pencil', points: [] };
 
-    constructor(canvas: HTMLCanvasElement, roomId: string, ws: WebSocket) {
+    constructor(
+        canvas: HTMLCanvasElement,
+        roomId: string,
+        joinRoomId: string,
+        setRoomId: React.Dispatch<React.SetStateAction<string>>,
+        setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
+        ws: WebSocket
+    ) {
         this.canvas = canvas
         this.ctx = this.canvas.getContext("2d")!
         this.existingShapes = []
         this.roomId = roomId
         this.ws = ws
+        this.joinRoomId = joinRoomId
+        this.setRoomId = setRoomId
+        this.setModalType = setModalType
         this.init()
         this.initMouseHandler()
         this.initHandler()
     }
 
-    async init(){
+    async init() {
         this.existingShapes = await this.getExistingShape()
         this.clearCanvas()
     }
 
-    initHandler(){
-        this.ws.onmessage =  (event) => {
+    initHandler() {
+        this.ws.onmessage = (event) => {
             const message = JSON.parse(event.data)
 
-            if (message.type === 'draw'){
+            if (message.type === 'draw') {
                 const parsedShape = JSON.parse(message.message)
                 this.existingShapes.push(parsedShape.shape)
                 this.clearCanvas()
+            } else if (message.message === "room_joined") {
+                this.setModalType(null)
+                this.setRoomId(message.roomId)
+                console.log('joined room ', message.roomId)
             }
         }
     }
 
     async getExistingShape() {
         const response = await axios.get(`${Backend_URL}/user/chats/${this.roomId}`, {
-                            headers: {
-                                Authorization: `Bearer ${getSecret()}`
-                            }
-                        })
+            headers: {
+                Authorization: `Bearer ${getSecret()}`
+            }
+        })
 
         const chats = response.data.chats
 
-        if(chats.length == 0){
+        if (chats.length == 0) {
             return [];
         }
         //@ts-ignore
@@ -287,7 +305,15 @@ export class Canvas {
 
         this.existingShapes.push(shape!)
         //push to websocket connection
-        if(width > 0 && height > 0  ){
+        if (this.selectedTool === 'rect' && width > 0 && height > 0) {
+            this.ws.send(JSON.stringify({
+                type: "draw",
+                message: JSON.stringify({
+                    shape
+                }),
+                roomId: this.roomId
+            }))
+        } else {
             this.ws.send(JSON.stringify({
                 type: "draw",
                 message: JSON.stringify({

@@ -1,10 +1,14 @@
+import axios from "axios"
+import { Backend_URL } from "../config"
+import { getSecret } from "../config"
+
 type Point = {
     x: number,
     y: number,
     thickness: number
 }
 
-type Tool = 'rect' | 'circle' | 'line' | 'pencil' 
+type Tool = 'rect' | 'circle' | 'line' | 'pencil'
 
 type Shape = {
     type: "rect",
@@ -42,19 +46,59 @@ export class Canvas {
     private lastX: number = 0
     private lastY: number = 0
     private clicked: boolean = false
+    private roomId: string
+    private ws: WebSocket
 
     private pencil: {
         type: 'pencil',
         points: Point[]
     } | null = { type: 'pencil', points: [] };
 
-    constructor(canvas: HTMLCanvasElement) {
+    constructor(canvas: HTMLCanvasElement, roomId: string, ws: WebSocket) {
         this.canvas = canvas
         this.ctx = this.canvas.getContext("2d")!
         this.existingShapes = []
+        this.roomId = roomId
+        this.ws = ws
+        this.init()
         this.initMouseHandler()
+        this.initHandler()
     }
 
+    async init(){
+        this.existingShapes = await this.getExistingShape()
+        this.clearCanvas()
+    }
+
+    initHandler(){
+        this.ws.onmessage =  (event) => {
+            const message = JSON.parse(event.data)
+
+            if (message.type === 'draw'){
+                const parsedShape = JSON.parse(message.message)
+                this.existingShapes.push(parsedShape.shape)
+                this.clearCanvas()
+            }
+        }
+    }
+
+    async getExistingShape() {
+        const response = await axios.get(`${Backend_URL}/user/chats/${this.roomId}`, {
+                            headers: {
+                                Authorization: `Bearer ${getSecret()}`
+                            }
+                        })
+
+        const chats = response.data.chats
+
+        if(chats.length == 0){
+            return [];
+        }
+        //@ts-ignore
+        const shapes = chats.map(chat => chat.shape);
+
+        return shapes
+    }
 
     clearCanvas() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
@@ -108,8 +152,9 @@ export class Canvas {
 
     }
 
-    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil' ) {
+    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil') {
         this.selectedTool = selectedTool;
+        console.log(selectedTool)
     }
 
     private drawWithPencil = (e: MouseEvent) => {
@@ -205,7 +250,7 @@ export class Canvas {
         const height = e.clientY - this.startY
 
         this.radius = Math.max(Math.abs(width), Math.abs(height))
-        let shape: Shape | null;
+        let shape: Shape | null = null;
 
         if (this.selectedTool == 'rect') {
             shape = {
@@ -241,6 +286,17 @@ export class Canvas {
         }
 
         this.existingShapes.push(shape!)
+        //push to websocket connection
+        if(width > 0 && height > 0  ){
+            this.ws.send(JSON.stringify({
+                type: "draw",
+                message: JSON.stringify({
+                    shape
+                }),
+                roomId: this.roomId
+            }))
+        }
+
         this.clearCanvas()
     }
 

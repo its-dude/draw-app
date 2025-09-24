@@ -69,11 +69,11 @@ export function DrawingRoom({userId}:{userId:string|null}) {
     }, [roomId])
 
     useEffect(() => {
-        if (canvasRef.current) {
+        if (canvasRef.current && roomId && socket ) {
             canvasRef.current.width = window.innerWidth
             canvasRef.current.height = window.innerHeight
 
-            const c = new Canvas(canvasRef.current)
+            const c = new Canvas(canvasRef.current, roomId, socket)
             setCanvas(c)
 
             return () => {
@@ -81,10 +81,11 @@ export function DrawingRoom({userId}:{userId:string|null}) {
             }
 
         }
-    }, [canvasRef])
+    }, [roomId,canvasRef, socket])
 
 
     useEffect(() => {
+        console.log("tool changed")
         canvas?.setTool(selectedTool)
 
     }, [selectedTool, canvas])
@@ -99,7 +100,13 @@ export function DrawingRoom({userId}:{userId:string|null}) {
             setModalType={setModalType}
             setJoinRoomId={setJoinRoomId}
         />
-
-        <DrawingArea setModalType={setModalType} selectedTool={selectedTool} setSelectedTool={setSelectedTool} canvasRef={canvasRef}/>
+        
+        {
+          !socket && <div>connecting...</div>  
+        }
+        
+        {
+            socket && <DrawingArea setModalType={setModalType} selectedTool={selectedTool} setSelectedTool={setSelectedTool} canvasRef={canvasRef}/>
+        }
     </>
 }

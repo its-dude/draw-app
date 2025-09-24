@@ -148,6 +148,7 @@ export default function initSocket(server: Server) {
                 }
 
                 const message = parsedData.message
+
                 const chat = await Chat.create({
                     userId: user.userId,
                     roomId: room._id,
@@ -159,7 +160,10 @@ export default function initSocket(server: Server) {
 
                 users.forEach(user => {
                     if (user.rooms.includes(parsedData.roomId) && user.ws != ws) {
-                        user.ws.send(JSON.stringify(parsedData.message))
+                        user.ws.send( JSON.stringify({
+                            type: "draw",
+                            message: JSON.stringify(message.shape)
+                        }) )
                     }
                 })
 

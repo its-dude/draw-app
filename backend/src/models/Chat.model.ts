@@ -33,10 +33,12 @@ const ShapeSchema = new mongoose.Schema(
         {
           x: Number,
           y: Number,
+          thickness: Number
         },
       ],
       default:undefined
     },
+
   },
   { _id: false }
 );

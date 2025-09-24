@@ -90,7 +90,7 @@ export class Canvas {
 
             if (message.type === 'draw') {
                 const parsedShape = JSON.parse(message.message)
-                this.existingShapes.push(parsedShape.shape)
+                this.existingShapes.push(parsedShape)
                 this.clearCanvas()
             } else if (message.message === "room_joined") {
                 this.setModalType(null)
@@ -166,8 +166,7 @@ export class Canvas {
             }
 
         })
-        console.log('inside clear ', this.existingShapes)
-
+        
     }
 
     setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil') {
@@ -321,6 +320,7 @@ export class Canvas {
                 }),
                 roomId: this.roomId
             }))
+            console.log("sent shape: ",shape)
         }
 
         this.clearCanvas()

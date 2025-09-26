@@ -51,6 +51,11 @@ export class Draw {
     private lastY: number = 0
     private clicked: boolean = false
     private ws: WebSocket
+    private viewportTransform = {
+        x: 0,
+        y: 0,
+        scale: 1
+    }
 
     private pencil: {
         type: 'pencil',
@@ -116,9 +121,19 @@ export class Draw {
     }
 
     clearCanvas() {
+        // Save current transform
+        this.ctx.save();
+
+        // Reset transform to identity
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // Clear the full canvas in screen coords
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
         this.ctx.fillStyle = 'rgba(0, 0, 0)'
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+        this.ctx.restore()
 
         this.existingShapes.map((shape: Shape) => {
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
@@ -163,7 +178,7 @@ export class Draw {
             }
 
         })
-        
+
     }
 
     setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil') {
@@ -171,10 +186,10 @@ export class Draw {
         console.log(selectedTool)
     }
 
-    private drawWithPencil = (e: MouseEvent) => {
+    private drawWithPencil = (x:number, y:number) => {
         console.log('inside')
-        const mouseX = e.pageX - this.canvas.offsetLeft;
-        const mouseY = e.pageY - this.canvas.offsetTop;
+        const mouseX = x
+        const mouseY = y
 
         // find all points between        
         var x1 = mouseX,
@@ -244,24 +259,73 @@ export class Draw {
 
     }
 
+    private updatePanning = (e: WheelEvent) => {
+
+        this.viewportTransform.x -= e.deltaX
+        this.viewportTransform.y -= e.deltaY
+        if (e.deltaX > 0) console.log("scrooled right")
+        console.log("scrolled left", e.deltaX)
+
+    }
+
+    private render = () => {
+        // New code 👇
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0)
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        this.ctx.setTransform(
+            this.viewportTransform.scale,
+            0,
+            0,
+            this.viewportTransform.scale,
+            this.viewportTransform.x,
+            this.viewportTransform.y
+        )
+        this.clearCanvas()
+    }
+
+    private updateZooming = (e: WheelEvent) => {
+        const oldx = this.viewportTransform.x
+        const oldy = this.viewportTransform.y
+        const oldScale = this.viewportTransform.scale
+
+        const localx = e.clientX
+        const localy = e.clientY
+
+        let newScale = oldScale + e.deltaY * -0.01;
+        newScale = Math.min(Math.max(newScale, 0.1), 10);
+
+        const newx = localx - (localx - oldx) * (newScale / oldScale)
+        const newy = localy - (localy - oldy) * (newScale / oldScale)
+
+        this.viewportTransform.x = newx
+        this.viewportTransform.y = newy
+        this.viewportTransform.scale = newScale
+    }
+
     mouseDownHandler = (e: MouseEvent) => {
-        console.log('inside down')
+        console.log('inside down ', e.clientX, e.clientY)
+        console.log('inside down global-', e.clientX - this.viewportTransform.x, e.clientY - this.viewportTransform.y)
         this.clicked = true;
-        this.startX = e.clientX;
-        this.startY = e.clientY;
-        this.ctx.fillStyle = "#ffffff";
-        // for pencil
-        if (this.selectedTool == 'pencil') {
-            this.lastX = e.pageX - this.canvas.offsetLeft;
-            this.lastY = e.pageY - this.canvas.offsetTop;
-        }
+        this.startX = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
+        this.startY = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
+        this.ctx.fillStyle = "#ffffff"
+        this.lastX = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
+        this.lastY = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
+
+
+        this.canvas.addEventListener('mousemove', this.mouseMoveHandler)
     }
 
     mouseUpHandler = (e: MouseEvent) => {
         console.log('inside up')
+
+        this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
+
         this.clicked = false
-        const width = e.clientX - this.startX
-        const height = e.clientY - this.startY
+        const x = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
+        const y = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
+        const width = x - this.startX
+        const height = y - this.startY
 
         this.radius = Math.max(Math.abs(width), Math.abs(height))
         let shape: Shape | null = null;
@@ -290,8 +354,8 @@ export class Draw {
                 type: this.selectedTool,
                 startX: this.startX,
                 startY: this.startY,
-                endX: e.clientX,
-                endY: e.clientY
+                endX: x,
+                endY: y
             }
 
         } else if (this.selectedTool == 'pencil') {
@@ -317,7 +381,7 @@ export class Draw {
                 }),
                 roomId: this.roomId
             }))
-            console.log("sent shape: ",shape)
+            console.log("sent shape: ", shape)
         }
 
         this.clearCanvas()
@@ -326,21 +390,22 @@ export class Draw {
     mouseMoveHandler = (e: MouseEvent) => {
 
         if (this.clicked) {
-            console.log('move tool =', this.selectedTool);
+            console.log('move tool =', this.selectedTool)
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
             this.ctx.fillStyle = 'rgb(255, 255, 255)'
 
+            const x = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
+            const y = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
+            const width = x - this.startX;
+            const height = y - this.startY;
+
             if (this.selectedTool == 'rect') {
-                const width = e.clientX - this.startX;
-                const height = e.clientY - this.startY;
 
                 this.clearCanvas()
                 this.ctx.strokeRect(this.startX, this.startY, width, height);
 
             } else if (this.selectedTool == 'circle') {
 
-                const width = e.clientX - this.startX;
-                const height = e.clientY - this.startY;
                 this.radius = Math.max(Math.abs(width), Math.abs(height))
                 this.clearCanvas()
                 const centerX = this.startX + this.radius
@@ -354,15 +419,32 @@ export class Draw {
                 this.clearCanvas()
                 this.ctx.beginPath()
                 this.ctx.moveTo(this.startX, this.startY)
-                this.ctx.lineTo(e.clientX, e.clientY)
+                this.ctx.lineTo(x, y)
                 this.ctx.closePath()
                 this.ctx.stroke()
 
             } else if (this.selectedTool == 'pencil') {
-                this.drawWithPencil(e);
+                this.drawWithPencil(x,y);
             }
         }
 
+    }
+
+    mouseWheelHandler = (e: WheelEvent) => {
+        if (e.deltaX !== 0) {
+            e.preventDefault()
+        }
+
+        if (e.ctrlKey) {
+            e.preventDefault()
+            this.updateZooming(e)
+            this.render()
+        } else {
+
+            console.log("mousewheel: ", e.clientX, e.clientY)
+            this.updatePanning(e);
+            this.render();
+        }
     }
 
     initMouseHandler = () => {
@@ -370,7 +452,7 @@ export class Draw {
 
         this.canvas.addEventListener('mouseup', this.mouseUpHandler)
 
-        this.canvas.addEventListener('mousemove', this.mouseMoveHandler)
+        this.canvas.addEventListener('wheel', this.mouseWheelHandler, { passive: false })
     }
 
     destroy = () => {
@@ -378,7 +460,7 @@ export class Draw {
 
         this.canvas.removeEventListener('mouseup', this.mouseUpHandler)
 
-        this.canvas.removeEventListener('mousemove', this.mouseMoveHandler)
+        this.canvas.removeEventListener('wheel', this.mouseWheelHandler)
     }
 
 }

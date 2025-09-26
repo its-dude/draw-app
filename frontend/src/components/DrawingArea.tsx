@@ -34,6 +34,6 @@ export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selected
             </div>
         </div>
         <div></div>
-        <canvas ref={canvasRef} className='absolute inset-0 w-[100%] h-[100%] ' ></canvas>
+        <canvas ref={canvasRef} className='absolute inset-0 w-[100%] h-[100%] border' ></canvas>
     </div>)
 }

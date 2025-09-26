@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import '../App.css'
-import { Canvas } from '../draw/canvas'
+import { Draw } from '../draw/draw'
 import axios from 'axios'
 import { getSecret } from '../config'
 import { JoinShareModal } from "../components/RoomModal";
@@ -11,7 +11,7 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil'>("rect")
     const [socket, setSocket] = useState<WebSocket | null>(null)
-    const [canvas, setCanvas] = useState<Canvas | null>(null)
+    const [draw, setDraw] = useState<Draw | null>(null)
     const [roomId, setRoomId] = useState<string>("")
     const [rooms, setRooms] = useState()
     const [joinRoomId, setJoinRoomId] = useState<string>("")
@@ -75,8 +75,8 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
             canvasRef.current.width = window.innerWidth
             canvasRef.current.height = window.innerHeight
 
-            const c = new Canvas(canvasRef.current, roomId, joinRoomId,setRoomId, setModalType, socket)
-            setCanvas(c)
+            const c = new Draw(canvasRef.current, roomId,setRoomId, setModalType, socket)
+            setDraw(c)
 
             return () => {
                 c.destroy()
@@ -88,9 +88,9 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
 
     useEffect(() => {
         console.log("tool changed")
-        canvas?.setTool(selectedTool)
+        draw?.setTool(selectedTool)
 
-    }, [selectedTool, canvas])
+    }, [selectedTool, draw])
 
     return <>
         <JoinShareModal

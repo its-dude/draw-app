@@ -36,13 +36,12 @@ type Shape = {
     points: Point[],
 }
 
-export class Canvas {
+export class Draw {
     private canvas: HTMLCanvasElement
     private ctx: CanvasRenderingContext2D
     private existingShapes: Shape[]
     private selectedTool: Tool = 'rect'
     private roomId: string;
-    private joinRoomId: string;
     private setRoomId: React.Dispatch<React.SetStateAction<string>>;
     private setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>;
     private startX: number = 0
@@ -61,7 +60,6 @@ export class Canvas {
     constructor(
         canvas: HTMLCanvasElement,
         roomId: string,
-        joinRoomId: string,
         setRoomId: React.Dispatch<React.SetStateAction<string>>,
         setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
         ws: WebSocket
@@ -71,7 +69,6 @@ export class Canvas {
         this.existingShapes = []
         this.roomId = roomId
         this.ws = ws
-        this.joinRoomId = joinRoomId
         this.setRoomId = setRoomId
         this.setModalType = setModalType
         this.init()

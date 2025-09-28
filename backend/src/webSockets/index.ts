@@ -156,8 +156,6 @@ export default function initSocket(server: Server) {
                         roomId: room._id,
                         shape: message.shape
                     })
-
-                    console.log("chat created: ", chat)
                     
                 room.chats.push(chat.id)
                 } else if(message.action === "delete") {
@@ -170,7 +168,7 @@ export default function initSocket(server: Server) {
                     await Chat.deleteOne({ _id: chatToDel!._id })
 
                     room.chats = room.chats.filter( chat => chat._id !== chatToDel._id)
-                    console.log("chat delted: ",chatToDel)
+
                 }
 
                 await room.save()

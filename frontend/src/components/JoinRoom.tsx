@@ -42,7 +42,7 @@ export function JoinRoomModal({ socket, roomId, joinRoomId, setJoinRoomId, onClo
     } 
   }
 
-  return <div id="join-room" className=' overlay fixed inset-0 bg-slate-400 flex items-center justify-center pointer-events-auto'>
+  return <div id="join-room" className=' overlay fixed inset-0 bg-slate-400 flex items-center justify-center pointer-events-auto z-200'>
     <div ref={joinRoomRef} className='w-82 h-max bg-white p-4 rounded-md flex flex-col text-start gap-2 '>
       <div>
         <label htmlFor='roomId' className='text-lg '>Enter room id to connect</label>

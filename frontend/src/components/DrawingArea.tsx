@@ -1,5 +1,9 @@
 import type React from "react";
 import type { Ref } from "react";
+import { Rectangle } from "../icons/rectangle";
+import { Circle } from "../icons/Circle";
+import { Line } from "../icons/Line";
+import { Pencil } from "../icons/Pencil";
 
 export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selectedTool }: {
     setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'>>,
@@ -12,11 +16,11 @@ export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selected
     
     <div className='h-screen w-screen bg-black text-white m-0 p-0'>
         <div className='header fixed w-full top-4 flex  bg-pink z-100 pointer-events-none'>
-            <div className='left-[40%] w-84 mx-auto bg-white text-black flex gap-5 justify-around pointer-events-auto'>
-                <button className='hover:text-gray-500' onClick={() => setSelectedTool('rect')}>rectangle</button>
-                <button className='hover:text-gray-500' onClick={() => setSelectedTool('circle')}>circle</button>
-                <button className='hover:text-gray-500' onClick={() => setSelectedTool('line')}>line</button>
-                <button className='hover:text-gray-500' onClick={() => setSelectedTool('pencil')}>pencil</button>
+            <div className='left-[40%] w-84 mx-auto bg-slate-100 text-black flex  justify-around pointer-events-auto rounded-md p-1'>
+                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('rect')}><Rectangle/></button>
+                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('circle')}><Circle/> </button>
+                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('line')}><Line/> </button>
+                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('pencil')}><Pencil/></button>
             </div>
             <div className='mr-4 flex gap-4 pointer-events-none'>
                 <button className='bg-purple-500 py-2 px-4 rounded-md pointer-events-auto' onClick={() => {

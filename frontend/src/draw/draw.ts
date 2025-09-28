@@ -2,6 +2,7 @@ import axios from "axios"
 import { Backend_URL } from "../config"
 import { getSecret } from "../config"
 import type React from "react"
+import { nanoid } from "nanoid"
 
 type Point = {
     x: number,
@@ -11,35 +12,46 @@ type Point = {
 
 type Tool = 'rect' | 'circle' | 'line' | 'pencil'
 
-type Shape = {
-    type: "rect",
-    x: number,
-    y: number,
-    width: number,
-    height: number
-} | {
-    type: 'circle',
-    centerX: number,
-    centerY: number,
-    radius: number,
-    startAngle: number,
-    endAngle: number,
-    direction: boolean
-} | {
-    type: 'line',
-    startX: number,
-    startY: number,
-    endX: number,
-    endY: number
-} | {
-    type: 'pencil',
-    points: Point[],
-}
+type BaseShape = {
+  id: string;   // common for all shapes
+};
+
+type Rect = BaseShape & {
+  type: "rect";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
+type Circle = BaseShape & {
+  type: "circle";
+  centerX: number;
+  centerY: number;
+  radius: number;
+  startAngle: number;
+  endAngle: number;
+  direction: boolean;
+};
+
+type Line = BaseShape & {
+  type: "line";
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+};
+
+type Pencil = BaseShape & {
+  type: "pencil";
+  points: Point[];
+};
+
+type Shape = Rect | Circle | Line | Pencil;
 
 export class Draw {
     private canvas: HTMLCanvasElement
     private ctx: CanvasRenderingContext2D
-    private existingShapes: Shape[]
     private selectedTool: Tool = 'rect'
     private roomId: string;
     private setRoomId: React.Dispatch<React.SetStateAction<string>>;
@@ -56,11 +68,11 @@ export class Draw {
         y: 0,
         scale: 1
     }
+    private serverShapes: Shape[]
+    private undo: Shape[]= []
+    private redo: Shape[]= []
 
-    private pencil: {
-        type: 'pencil',
-        points: Point[]
-    } | null = { type: 'pencil', points: [] };
+    private pencil: Pencil = { type: 'pencil', points: [], id: this.getId() };
 
     constructor(
         canvas: HTMLCanvasElement,
@@ -71,7 +83,7 @@ export class Draw {
     ) {
         this.canvas = canvas
         this.ctx = this.canvas.getContext("2d")!
-        this.existingShapes = []
+        this.serverShapes = []
         this.roomId = roomId
         this.ws = ws
         this.setRoomId = setRoomId
@@ -82,8 +94,8 @@ export class Draw {
     }
 
     async init() {
-        this.existingShapes = await this.getExistingShape()
-        this.clearCanvas()
+        this.serverShapes = await this.getExistingShape()
+        this.clearCanvasAndDraw()
     }
 
     initHandler() {
@@ -92,12 +104,17 @@ export class Draw {
 
             if (message.type === 'draw') {
                 const parsedShape = JSON.parse(message.message)
-                this.existingShapes.push(parsedShape)
-                this.clearCanvas()
+
+                if(parsedShape.action === 'create'){
+                    this.serverShapes.push(parsedShape.shape)
+                }else if(parsedShape.action === 'delete'){
+                    this.serverShapes = this.serverShapes.filter( shape => shape.id !== parsedShape.shape.id )
+                }
+                this.clearCanvasAndDraw()
             } else if (message.message === "room_joined") {
                 this.setModalType(null)
                 this.setRoomId(message.roomId)
-                console.log('joined room ', message.roomId)
+
             }
         }
     }
@@ -118,24 +135,11 @@ export class Draw {
         const shapes = chats.map(chat => chat.shape);
 
         return shapes
-    }
+    } 
 
-    clearCanvas() {
-        // Save current transform
-        this.ctx.save();
+    draw(){
 
-        // Reset transform to identity
-        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-        // Clear the full canvas in screen coords
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-        this.ctx.fillStyle = 'rgba(0, 0, 0)'
-        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-        this.ctx.restore()
-
-        this.existingShapes.map((shape: Shape) => {
+        this.serverShapes.map((shape: Shape) => {
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
 
             if (shape.type === "rect") {
@@ -179,15 +183,74 @@ export class Draw {
 
         })
 
+        this.undo.map((shape: Shape) => {
+            this.ctx.strokeStyle = 'rgba(255, 255, 255)'
+
+            if (shape.type === "rect") {
+
+                this.ctx.strokeRect(shape.x, shape.y, shape.width, shape.height);
+
+            } else if (shape.type === 'circle') {
+
+                this.ctx.beginPath()
+                this.ctx.arc(shape.centerX, shape.centerY, shape.radius, shape.startAngle, shape.endAngle)
+                this.ctx.stroke()
+
+            } else if (shape.type === 'line') {
+
+                this.ctx.beginPath()
+                this.ctx.moveTo(shape.startX, shape.startY)
+                this.ctx.lineTo(shape.endX, shape.endY)
+                this.ctx.closePath()
+                this.ctx.stroke()
+
+            } else if (shape.type === 'pencil') {
+
+                this.ctx.fillStyle = "rgba(255, 255, 255)"
+
+                for (let i = 1; i < shape.points.length; i++) {
+                    const p1 = shape.points[i - 1];
+                    const p2 = shape.points[i];
+                    const dx = p2.x - p1.x;
+                    const dy = p2.y - p1.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const steps = Math.ceil(dist); // or some factor for spacing
+
+                    for (let j = 0; j <= steps; j++) {
+                        const x = p1.x + (dx * j / steps);
+                        const y = p1.y + (dy * j / steps);
+                        const thickness = p1.thickness + (p2.thickness - p1.thickness) * (j / steps);
+                        this.ctx.fillRect(x, y, thickness, thickness);
+                    }
+                }
+            }
+
+        })
+    }
+
+    clearCanvasAndDraw() {
+        // Save current transform
+        this.ctx.save();
+
+        // Reset transform to identity
+        this.ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+        // Clear the full canvas in screen coords
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        this.ctx.fillStyle = 'rgba(0, 0, 0)'
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+        this.ctx.restore()
+        this.draw()
+
     }
 
     setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil') {
         this.selectedTool = selectedTool;
-        console.log(selectedTool)
     }
 
-    private drawWithPencil = (x:number, y:number) => {
-        console.log('inside')
+    private drawWithPencil = (x: number, y: number) => {
         const mouseX = x
         const mouseY = y
 
@@ -263,13 +326,9 @@ export class Draw {
 
         this.viewportTransform.x -= e.deltaX
         this.viewportTransform.y -= e.deltaY
-        if (e.deltaX > 0) console.log("scrooled right")
-        console.log("scrolled left", e.deltaX)
-
     }
 
     private render = () => {
-        // New code 👇
         this.ctx.setTransform(1, 0, 0, 1, 0, 0)
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
         this.ctx.setTransform(
@@ -280,7 +339,7 @@ export class Draw {
             this.viewportTransform.x,
             this.viewportTransform.y
         )
-        this.clearCanvas()
+        this.clearCanvasAndDraw()
     }
 
     private updateZooming = (e: WheelEvent) => {
@@ -302,9 +361,24 @@ export class Draw {
         this.viewportTransform.scale = newScale
     }
 
+    private getId(){
+        return nanoid(7);
+    }
+
+    private sendMessage(action:string, shape:Shape){
+
+            this.ws.send(JSON.stringify({
+                type: "draw",
+                message: JSON.stringify({
+                    action,
+                    shape
+                }),
+                roomId: this.roomId,
+            }))
+
+    }
+
     mouseDownHandler = (e: MouseEvent) => {
-        console.log('inside down ', e.clientX, e.clientY)
-        console.log('inside down global-', e.clientX - this.viewportTransform.x, e.clientY - this.viewportTransform.y)
         this.clicked = true;
         this.startX = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
         this.startY = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
@@ -317,7 +391,6 @@ export class Draw {
     }
 
     mouseUpHandler = (e: MouseEvent) => {
-        console.log('inside up')
 
         this.canvas.removeEventListener('mousemove', this.mouseMoveHandler);
 
@@ -329,6 +402,7 @@ export class Draw {
 
         this.radius = Math.max(Math.abs(width), Math.abs(height))
         let shape: Shape | null = null;
+        let id = this.getId()
 
         if (this.selectedTool == 'rect') {
             shape = {
@@ -336,7 +410,8 @@ export class Draw {
                 x: this.startX,
                 y: this.startY,
                 width,
-                height
+                height,
+                id
             }
         } else if (this.selectedTool == 'circle') {
             shape = {
@@ -346,7 +421,8 @@ export class Draw {
                 radius: this.radius,
                 startAngle: 0,
                 endAngle: 2 * Math.PI,
-                direction: true
+                direction: true,
+                id
             }
 
         } else if (this.selectedTool == 'line') {
@@ -355,42 +431,26 @@ export class Draw {
                 startX: this.startX,
                 startY: this.startY,
                 endX: x,
-                endY: y
+                endY: y,
+                id
             }
 
         } else if (this.selectedTool == 'pencil') {
             shape = this.pencil
-            this.pencil = { type: 'pencil', points: [] }
+            this.pencil = { type: 'pencil', points: [], id: this.getId() }
         }
 
-        this.existingShapes.push(shape!)
-        //push to websocket connection
-        if (this.selectedTool === 'rect' && width > 0 && height > 0) {
-            this.ws.send(JSON.stringify({
-                type: "draw",
-                message: JSON.stringify({
-                    shape
-                }),
-                roomId: this.roomId
-            }))
-        } else {
-            this.ws.send(JSON.stringify({
-                type: "draw",
-                message: JSON.stringify({
-                    shape
-                }),
-                roomId: this.roomId
-            }))
-            console.log("sent shape: ", shape)
-        }
+        this.undo.push(shape!)
 
-        this.clearCanvas()
+        this.sendMessage("create",shape!)
+
+        this.clearCanvasAndDraw()
+        this.redo = []
     }
 
     mouseMoveHandler = (e: MouseEvent) => {
 
         if (this.clicked) {
-            console.log('move tool =', this.selectedTool)
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
             this.ctx.fillStyle = 'rgb(255, 255, 255)'
 
@@ -401,13 +461,13 @@ export class Draw {
 
             if (this.selectedTool == 'rect') {
 
-                this.clearCanvas()
+                this.clearCanvasAndDraw()
                 this.ctx.strokeRect(this.startX, this.startY, width, height);
 
             } else if (this.selectedTool == 'circle') {
 
                 this.radius = Math.max(Math.abs(width), Math.abs(height))
-                this.clearCanvas()
+                this.clearCanvasAndDraw()
                 const centerX = this.startX + this.radius
                 const centerY = this.startY + this.radius
 
@@ -416,7 +476,7 @@ export class Draw {
                 this.ctx.stroke()
 
             } else if (this.selectedTool == 'line') {
-                this.clearCanvas()
+                this.clearCanvasAndDraw()
                 this.ctx.beginPath()
                 this.ctx.moveTo(this.startX, this.startY)
                 this.ctx.lineTo(x, y)
@@ -424,7 +484,7 @@ export class Draw {
                 this.ctx.stroke()
 
             } else if (this.selectedTool == 'pencil') {
-                this.drawWithPencil(x,y);
+                this.drawWithPencil(x, y);
             }
         }
 
@@ -440,10 +500,37 @@ export class Draw {
             this.updateZooming(e)
             this.render()
         } else {
-
-            console.log("mousewheel: ", e.clientX, e.clientY)
             this.updatePanning(e);
             this.render();
+        }
+    }
+
+    KeyDownHandler = (e: KeyboardEvent) => {
+        if (!e.ctrlKey) return;
+
+        // Stop browser default undo/redo
+        e.preventDefault();
+
+        if (e.key.toLowerCase() === 'z') {
+            // Undo
+            if (this.undo.length === 0) {
+                return;
+            }
+
+            console.log("undo ", this.undo);
+
+            const shape = this.undo.pop()!
+            this.redo.push(shape)
+            this.sendMessage("delete",shape)
+            this.clearCanvasAndDraw()
+        } else if (e.key.toLowerCase() === 'y') {
+            // Redo
+            if (this.redo.length === 0) return;
+
+            const shape = this.redo.pop()!
+            this.undo.push(shape)
+            this.sendMessage("create", shape)
+            this.clearCanvasAndDraw()
         }
     }
 
@@ -453,6 +540,8 @@ export class Draw {
         this.canvas.addEventListener('mouseup', this.mouseUpHandler)
 
         this.canvas.addEventListener('wheel', this.mouseWheelHandler, { passive: false })
+
+        document.body.addEventListener('keydown', this.KeyDownHandler, { passive: false })
     }
 
     destroy = () => {
@@ -461,6 +550,8 @@ export class Draw {
         this.canvas.removeEventListener('mouseup', this.mouseUpHandler)
 
         this.canvas.removeEventListener('wheel', this.mouseWheelHandler)
+
+        this.canvas.removeEventListener('keydown', this.KeyDownHandler)
     }
 
 }

@@ -38,7 +38,7 @@ const ShapeSchema = new mongoose.Schema(
       ],
       default:undefined
     },
-
+    id: String
   },
   { _id: false }
 );

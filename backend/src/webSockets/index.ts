@@ -4,6 +4,7 @@ import { Chat, Room } from "../models";
 import jwt, { Secret } from "jsonwebtoken";
 import { config } from "../config/config";
 import { json } from "zod";
+import { resourceUsage } from "process";
 
 type User = {
     userId: string,
@@ -100,7 +101,7 @@ export default function initSocket(server: Server) {
                 user.rooms.push(parsedData.roomId);
 
                 ws.send(JSON.stringify({
-                    message:"room_joined",
+                    message: "room_joined",
                     roomId: parsedData.roomId
                 }));
             }
@@ -133,7 +134,7 @@ export default function initSocket(server: Server) {
 
                 if (!user) {
                     return ws.send(JSON.stringify({
-                        message:"Not authorized"
+                        message: "Not authorized"
                     }))
                 }
 
@@ -143,27 +144,43 @@ export default function initSocket(server: Server) {
 
                 if (!room) {
                     return ws.send(JSON.stringify({
-                        message:"Invalid room id"
+                        message: "Invalid room id"
                     }))
                 }
 
                 const message = parsedData.message
 
-                const chat = await Chat.create({
-                    userId: user.userId,
-                    roomId: room._id,
-                    shape: message.shape
-                })
+                if (message.action === "create") {
+                    let chat = await Chat.create({
+                        userId: user.userId,
+                        roomId: room._id,
+                        shape: message.shape
+                    })
 
-                room.chats.push(chat._id)
+                    console.log("chat created: ", chat)
+                    
+                room.chats.push(chat.id)
+                } else if(message.action === "delete") {
+                  let chatToDel = await Chat.findOne({
+                        "shape.id": message.shape.id
+                    })
+
+                    if(!chatToDel)return
+
+                    await Chat.deleteOne({ _id: chatToDel!._id })
+
+                    room.chats = room.chats.filter( chat => chat._id !== chatToDel._id)
+                    console.log("chat delted: ",chatToDel)
+                }
+
                 await room.save()
 
                 users.forEach(user => {
                     if (user.rooms.includes(parsedData.roomId) && user.ws != ws) {
-                        user.ws.send( JSON.stringify({
+                        user.ws.send(JSON.stringify({
                             type: "draw",
-                            message: JSON.stringify(message.shape)
-                        }) )
+                            message: JSON.stringify({shape:message.shape, action: message.action})
+                        }))
                     }
                 })
 

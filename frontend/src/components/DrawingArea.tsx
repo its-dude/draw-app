@@ -4,12 +4,13 @@ import { Rectangle } from "../icons/rectangle";
 import { Circle } from "../icons/Circle";
 import { Line } from "../icons/Line";
 import { Pencil } from "../icons/Pencil";
+import { Eraser } from "../icons/Eraser";
 
 export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selectedTool }: {
-    setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'>>,
+    setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'| 'eraser'>>,
     setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
     canvasRef: Ref<HTMLCanvasElement> | undefined,
-    selectedTool: 'rect' | 'circle' | 'line' | 'pencil'
+    selectedTool: 'rect' | 'circle' | 'line' | 'pencil'|'eraser'
 }
 ) {
     return (
@@ -21,6 +22,7 @@ export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selected
                 <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('circle')}><Circle/> </button>
                 <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('line')}><Line/> </button>
                 <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('pencil')}><Pencil/></button>
+                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('eraser')} ><Eraser/></button>
             </div>
             <div className='mr-4 flex gap-4 pointer-events-none'>
                 <button className='bg-purple-500 py-2 px-4 rounded-md pointer-events-auto' onClick={() => {

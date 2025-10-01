@@ -9,7 +9,7 @@ import { DrawingArea } from '../components/DrawingArea'
 export function DrawingRoom({ userId }: { userId: string | null }) {
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil'>("rect")
+    const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil'| 'eraser'>("rect")
     const [socket, setSocket] = useState<WebSocket | null>(null)
     const [draw, setDraw] = useState<Draw | null>(null)
     const [roomId, setRoomId] = useState<string>("")
@@ -87,14 +87,19 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
 
 
     useEffect(() => {
-        console.log("tool changed")
+        if(selectedTool === 'eraser' && canvasRef.current){
+            canvasRef.current.style.cursor = "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2032%2032'%3E%3Ccircle%20cx='16'%20cy='16'%20r='8'%20fill='black'%20stroke='white'%20stroke-width='2'/%3E%3C/svg%3E\") 16 16, auto";
+        }else if(selectedTool !== 'eraser' && canvasRef.current){
+            canvasRef.current.style.cursor= ""
+        }
+        console.log("tool changed: ",selectedTool)
         draw?.setTool(selectedTool)
 
-    }, [selectedTool, draw])
+    }, [selectedTool, canvasRef, draw])
 
     return <>
         <JoinShareModal
-            socket={socket}
+            socket={socket} 
             modalType={modalType}
             roomId={roomId}
             joinRoomId={joinRoomId}

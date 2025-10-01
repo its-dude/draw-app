@@ -10,41 +10,41 @@ type Point = {
     thickness: number
 }
 
-type Tool = 'rect' | 'circle' | 'line' | 'pencil'
+type Tool = 'rect' | 'circle' | 'line' | 'pencil' | 'eraser'
 
 type BaseShape = {
-  id: string;   // common for all shapes
+    id: string;   // common for all shapes
 };
 
 type Rect = BaseShape & {
-  type: "rect";
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+    type: "rect";
+    x: number;
+    y: number;
+    width: number;
+    height: number;
 };
 
 type Circle = BaseShape & {
-  type: "circle";
-  centerX: number;
-  centerY: number;
-  radius: number;
-  startAngle: number;
-  endAngle: number;
-  direction: boolean;
+    type: "circle";
+    centerX: number;
+    centerY: number;
+    radius: number;
+    startAngle: number;
+    endAngle: number;
+    direction: boolean;
 };
 
 type Line = BaseShape & {
-  type: "line";
-  startX: number;
-  startY: number;
-  endX: number;
-  endY: number;
+    type: "line";
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
 };
 
 type Pencil = BaseShape & {
-  type: "pencil";
-  points: Point[];
+    type: "pencil";
+    points: Point[];
 };
 
 type Shape = Rect | Circle | Line | Pencil;
@@ -69,8 +69,8 @@ export class Draw {
         scale: 1
     }
     private serverShapes: Shape[]
-    private undo: Shape[]= []
-    private redo: Shape[]= []
+    private undo: Shape[] = []
+    private redo: Shape[] = []
 
     private pencil: Pencil = { type: 'pencil', points: [], id: this.getId() };
 
@@ -105,10 +105,10 @@ export class Draw {
             if (message.type === 'draw') {
                 const parsedShape = JSON.parse(message.message)
 
-                if(parsedShape.action === 'create'){
+                if (parsedShape.action === 'create') {
                     this.serverShapes.push(parsedShape.shape)
-                }else if(parsedShape.action === 'delete'){
-                    this.serverShapes = this.serverShapes.filter( shape => shape.id !== parsedShape.shape.id )
+                } else if (parsedShape.action === 'delete') {
+                    this.serverShapes = this.serverShapes.filter(shape => shape.id !== parsedShape.shape.id)
                 }
                 this.clearCanvasAndDraw()
             } else if (message.message === "room_joined") {
@@ -135,9 +135,9 @@ export class Draw {
         const shapes = chats.map(chat => chat.shape);
 
         return shapes
-    } 
+    }
 
-    draw(){
+    draw() {
 
         this.serverShapes.map((shape: Shape) => {
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
@@ -246,7 +246,7 @@ export class Draw {
 
     }
 
-    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil') {
+    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil' | 'eraser') {
         this.selectedTool = selectedTool;
     }
 
@@ -361,20 +361,138 @@ export class Draw {
         this.viewportTransform.scale = newScale
     }
 
-    private getId(){
+    private getId() {
         return nanoid(7);
     }
 
-    private sendMessage(action:string, shape:Shape){
+    private getCanvasCoordinate(clientX: number, clientY: number) {
+        return {
+            x: (clientX - this.viewportTransform.x) / this.viewportTransform.scale,
+            y: (clientY - this.viewportTransform.y) / this.viewportTransform.scale
+        }
+    }
 
-            this.ws.send(JSON.stringify({
-                type: "draw",
-                message: JSON.stringify({
-                    action,
-                    shape
-                }),
-                roomId: this.roomId,
-            }))
+    private eraseFirstShape(
+        shapes: typeof this.serverShapes,
+        eraserX: number,
+        eraserY: number
+    ): { remainingShapes: typeof shapes, deletedShape: typeof shapes[0] | null } {
+        let deletedShape: typeof shapes[0] | null = null;
+
+        const remainingShapes = shapes.filter(shape => {
+            if (deletedShape) return true; // already deleted one, keep the rest
+
+            let hit = false;
+
+            if (shape.type === 'rect') {
+                hit = (
+                    eraserX >= Math.min(shape.x, shape.x + shape.width) &&
+                    eraserX <= Math.max(shape.x, shape.x + shape.width) &&
+                    eraserY >= Math.min(shape.y, shape.y + shape.height) &&
+                    eraserY <= Math.max(shape.y, shape.y + shape.height)
+                );
+            } else if (shape.type === 'line') {
+                hit = this.eraseLine(eraserX, eraserY, shape.startX, shape.startY, shape.endX, shape.endY);
+            } else if (shape.type === 'circle') {
+                hit = this.eraseCircle(eraserX, eraserY, shape.centerX, shape.centerY, shape.radius);
+            } else if (shape.type === 'pencil') {
+                hit = this.erasePencil(eraserX, eraserY, shape.points);
+            }
+
+            if (hit) deletedShape = shape; // first shape to erase
+            return !hit;
+        });
+
+        return { remainingShapes, deletedShape };
+    }
+
+
+    private erase(e: MouseEvent) {
+        const coordinates = this.getCanvasCoordinate(e.clientX, e.clientY);
+        const eraserX = coordinates.x;
+        const eraserY = coordinates.y;
+
+        const serverResult = this.eraseFirstShape(this.serverShapes, eraserX, eraserY);
+        this.serverShapes = serverResult.remainingShapes;
+        if (serverResult.deletedShape) {
+            this.sendMessage('delete', serverResult.deletedShape);
+            return; // stop after deleting one shape
+        }
+
+        const undoResult = this.eraseFirstShape(this.undo, eraserX, eraserY);
+        this.undo = undoResult.remainingShapes;
+        if (undoResult.deletedShape) {
+            this.sendMessage('delete', undoResult.deletedShape);
+        }
+    }
+
+
+
+    private eraseLine(ex: number, ey: number, x1: number, y1: number, x2: number, y2: number) {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        if (dx === 0 && dy === 0) {
+            // line is just a point
+            return Math.hypot(ex - x1, ey - y1) <= 8;
+        }
+
+        let t = ((ex - x1) * dx + (ey - y1) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t));
+
+        const cx = x1 + t * dx;
+        const cy = y1 + t * dy;
+
+        const dist = Math.hypot(ex - cx, ey - cy);
+
+        return dist <= 8; // true = erase
+    }
+
+    private eraseCircle(ex: number, ey: number, cx: number, cy: number, radius: number) {
+        const dist = Math.sqrt((ex - cx) * (ex - cx) + (ey - cy) * (ey - cy))
+        return Math.abs(dist - radius) <= 4
+    }
+
+    private pointToSegmentDistance(px: number, py: number, x1: number, y1: number, x2: number, y2: number): number {
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+
+        if (dx === 0 && dy === 0) {
+            // segment is a point
+            return Math.sqrt((px - x1) ** 2 + (py - y1) ** 2);
+        }
+
+        // Projection factor t of point on segment
+        let t = ((px - x1) * dx + (py - y1) * dy) / (dx * dx + dy * dy);
+        t = Math.max(0, Math.min(1, t)); // clamp to segment
+
+        const closestX = x1 + t * dx;
+        const closestY = y1 + t * dy;
+
+        return Math.sqrt((px - closestX) ** 2 + (py - closestY) ** 2);
+    }
+
+    private erasePencil(ex: number, ey: number, points: { x: number, y: number, thickness: number }[], eraserRadius: number = 8): boolean {
+        for (let i = 0; i < points.length - 1; i++) {
+            const d = this.pointToSegmentDistance(ex, ey, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
+            if (d <= eraserRadius + points[i].thickness / 2) {
+                return true; // eraser touched stroke
+            }
+        }
+        return false;
+    }
+
+
+    private sendMessage(action: string, shape: Shape) {
+
+        this.ws.send(JSON.stringify({
+            type: "draw",
+            message: JSON.stringify({
+                action,
+                shape
+            }),
+            roomId: this.roomId,
+        }))
 
     }
 
@@ -438,11 +556,13 @@ export class Draw {
         } else if (this.selectedTool == 'pencil') {
             shape = this.pencil
             this.pencil = { type: 'pencil', points: [], id: this.getId() }
+        } else if (this.selectedTool == 'eraser') {
+            return
         }
 
         this.undo.push(shape!)
 
-        this.sendMessage("create",shape!)
+        this.sendMessage("create", shape!)
 
         this.clearCanvasAndDraw()
         this.redo = []
@@ -453,9 +573,9 @@ export class Draw {
         if (this.clicked) {
             this.ctx.strokeStyle = 'rgba(255, 255, 255)'
             this.ctx.fillStyle = 'rgb(255, 255, 255)'
-
-            const x = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
-            const y = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
+            const coordinates = this.getCanvasCoordinate(e.clientX, e.clientY)
+            const x = coordinates.x
+            const y = coordinates.y
             const width = x - this.startX;
             const height = y - this.startY;
 
@@ -485,6 +605,9 @@ export class Draw {
 
             } else if (this.selectedTool == 'pencil') {
                 this.drawWithPencil(x, y);
+            } else if (this.selectedTool == 'eraser') {
+                this.erase(e);
+                this.clearCanvasAndDraw()
             }
         }
 
@@ -521,7 +644,7 @@ export class Draw {
 
             const shape = this.undo.pop()!
             this.redo.push(shape)
-            this.sendMessage("delete",shape)
+            this.sendMessage("delete", shape)
             this.clearCanvasAndDraw()
         } else if (e.key.toLowerCase() === 'y') {
             // Redo

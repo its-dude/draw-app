@@ -16,13 +16,13 @@ export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selected
     return (
     
     <div className='h-screen w-screen bg-black text-white m-0 p-0'>
-        <div className='header fixed w-full top-4 flex  bg-pink z-100 pointer-events-none'>
-            <div className='left-[40%] w-84 mx-auto bg-slate-100 text-black flex  justify-around pointer-events-auto rounded-md p-1'>
-                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('rect')}><Rectangle/></button>
-                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('circle')}><Circle/> </button>
-                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('line')}><Line/> </button>
-                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('pencil')}><Pencil/></button>
-                <button className='hover:bg-gray-400 p-1 rounded-md' onClick={() => setSelectedTool('eraser')} ><Eraser/></button>
+        <div className='header fixed w-full top-4 flex z-100 pointer-events-none'>
+            <div className='left-[40%] w-84 mx-auto bg-[#222] text-white flex  justify-around pointer-events-auto rounded-md p-1'>
+                <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='rect'?   "bg-purple-300": ""}`} onClick={() => setSelectedTool('rect')}><Rectangle/></button>
+                <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='circle'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('circle')}><Circle/> </button>
+                <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='line'?   "bg-purple-300": ""}`} onClick={() => setSelectedTool('line')}><Line/> </button>
+                <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='pencil'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('pencil')}><Pencil/></button>
+                <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='eraser'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('eraser')} ><Eraser/></button>
             </div>
             <div className='mr-4 flex gap-4 pointer-events-none'>
                 <button className='bg-purple-500 py-2 px-4 rounded-md pointer-events-auto' onClick={() => {

@@ -95,6 +95,7 @@ export class Draw {
 
     async init() {
         this.serverShapes = await this.getExistingShape()
+        console.log(this.serverShapes)
         this.clearCanvasAndDraw()
     }
 
@@ -427,7 +428,6 @@ export class Draw {
     }
 
 
-
     private eraseLine(ex: number, ey: number, x1: number, y1: number, x2: number, y2: number) {
         const dx = x2 - x1;
         const dy = y2 - y1;
@@ -496,6 +496,19 @@ export class Draw {
 
     }
 
+    private isValidShape(shape: Shape): boolean {
+        if (shape.type === 'rect' && shape.width === 0 && shape.height === 0) {
+            return false
+        } else if (shape.type === 'circle' && shape.radius === 0) {
+            return false
+        } else if (shape.type === 'pencil' && shape.points.length === 0) {
+            return false
+        } else if (shape.type === 'line' && shape.startX === shape.endX && shape.startY === shape.endY) {
+            return false
+        }
+        return true
+    }
+
     mouseDownHandler = (e: MouseEvent) => {
         this.clicked = true;
         this.startX = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
@@ -559,6 +572,8 @@ export class Draw {
         } else if (this.selectedTool == 'eraser') {
             return
         }
+
+        if (!this.isValidShape(shape!)) return;
 
         this.undo.push(shape!)
 

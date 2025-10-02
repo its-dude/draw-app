@@ -5,12 +5,13 @@ import { Circle } from "../icons/Circle";
 import { Line } from "../icons/Line";
 import { Pencil } from "../icons/Pencil";
 import { Eraser } from "../icons/Eraser";
+import { Text } from "../icons/Text";
 
 export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selectedTool }: {
-    setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'| 'eraser'>>,
+    setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'| 'eraser'|"Text">>,
     setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
     canvasRef: Ref<HTMLCanvasElement> | undefined,
-    selectedTool: 'rect' | 'circle' | 'line' | 'pencil'|'eraser'
+    selectedTool: 'rect' | 'circle' | 'line' | 'pencil'|'eraser'|'Text'
 }
 ) {
     return (
@@ -22,6 +23,7 @@ export function DrawingArea({ setSelectedTool, setModalType, canvasRef, selected
                 <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='circle'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('circle')}><Circle/> </button>
                 <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='line'?   "bg-purple-300": ""}`} onClick={() => setSelectedTool('line')}><Line/> </button>
                 <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='pencil'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('pencil')}><Pencil/></button>
+                <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='Text'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('Text')} ><Text/></button>
                 <button className={`hover:bg-purple-300 p-1 rounded-md ${selectedTool=='eraser'? "bg-purple-300": ""}`} onClick={() => setSelectedTool('eraser')} ><Eraser/></button>
             </div>
             <div className='mr-4 flex gap-4 pointer-events-none'>

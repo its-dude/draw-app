@@ -1,10 +1,11 @@
 import mongoose from "mongoose";
+import { number } from "zod";
 
 const ShapeSchema = new mongoose.Schema(
   {
     type: {
       type: String,
-      enum: ["rect", "circle", "line", "pencil"],
+      enum: ["rect", "circle", "line", "pencil", "text"],
       required: true,
     },
     // Rectangle
@@ -38,6 +39,13 @@ const ShapeSchema = new mongoose.Schema(
       ],
       default:undefined
     },
+
+    lines: [{
+      text: String,
+      x: number,
+      y: number
+    }],
+
     id: String
   },
   { _id: false }

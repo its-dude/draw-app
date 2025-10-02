@@ -7,7 +7,7 @@ export function JoinShareModal({ modalType, socket, joinRoomId, roomId, setJoinR
     joinRoomId: string,
     roomId: string
     setJoinRoomId: React.Dispatch<React.SetStateAction<string>>,
-    setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'|'eraser'>>,
+    setSelectedTool: React.Dispatch<React.SetStateAction<'rect' | 'circle' | 'line' | 'pencil'|'eraser'|'Text'>>,
     setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
     socket: WebSocket | null
 }) {

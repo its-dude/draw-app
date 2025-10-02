@@ -10,7 +10,7 @@ type Point = {
     thickness: number
 }
 
-type Tool = 'rect' | 'circle' | 'line' | 'pencil' | 'eraser'
+type Tool = 'rect' | 'circle' | 'line' | 'pencil' | 'eraser' | 'Text'
 
 type BaseShape = {
     id: string;   // common for all shapes
@@ -47,7 +47,13 @@ type Pencil = BaseShape & {
     points: Point[];
 };
 
-type Shape = Rect | Circle | Line | Pencil;
+type Text = BaseShape & {
+    type: 'text',
+    id: string,
+    lines: { text: string, x: number, y: number }[]
+}
+
+type Shape = Rect | Circle | Line | Pencil | Text;
 
 export class Draw {
     private canvas: HTMLCanvasElement
@@ -55,7 +61,11 @@ export class Draw {
     private selectedTool: Tool = 'rect'
     private roomId: string;
     private setRoomId: React.Dispatch<React.SetStateAction<string>>;
-    private setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>;
+    private setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>
+    private textareaParent: HTMLDivElement
+    private isTyping: boolean = false
+    private textStartX: number = 0
+    private textStartY: number = 0
     private startX: number = 0
     private startY: number = 0
     private radius: number = 0
@@ -79,13 +89,18 @@ export class Draw {
         roomId: string,
         setRoomId: React.Dispatch<React.SetStateAction<string>>,
         setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>,
-        ws: WebSocket
+        ws: WebSocket,
+        textareaParent: HTMLDivElement
     ) {
         this.canvas = canvas
         this.ctx = this.canvas.getContext("2d")!
         this.serverShapes = []
         this.roomId = roomId
         this.ws = ws
+        this.textareaParent = textareaParent
+        this.ctx.fillStyle = "rgba(255, 255, 255, 0.87)"; // same perceived brightness
+        this.ctx.font = '24px sans-serif'
+        this.ctx.textBaseline = 'top'
         this.setRoomId = setRoomId
         this.setModalType = setModalType
         this.init()
@@ -180,6 +195,11 @@ export class Draw {
                         this.ctx.fillRect(x, y, thickness, thickness);
                     }
                 }
+            } else if (shape.type === 'text') {
+
+                shape.lines.forEach(line => {
+                    this.ctx.fillText(line.text, line.x, line.y)
+                })
             }
 
         })
@@ -224,6 +244,11 @@ export class Draw {
                         this.ctx.fillRect(x, y, thickness, thickness);
                     }
                 }
+            } else if (shape.type === 'text') {
+
+                shape.lines.forEach(line => {
+                    this.ctx.fillText(line.text, line.x, line.y)
+                })
             }
 
         })
@@ -247,7 +272,7 @@ export class Draw {
 
     }
 
-    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil' | 'eraser') {
+    setTool(selectedTool: 'rect' | 'circle' | 'line' | 'pencil' | 'eraser' | 'Text') {
         this.selectedTool = selectedTool;
     }
 
@@ -517,6 +542,77 @@ export class Draw {
         this.lastX = (e.clientX - this.viewportTransform.x) / this.viewportTransform.scale
         this.lastY = (e.clientY - this.viewportTransform.y) / this.viewportTransform.scale
 
+        if (!this.isTyping && this.selectedTool == 'Text') {
+            const textarea = document.createElement("textarea")
+            textarea.style.position = "absolute"
+            textarea.style.top = `${e.clientY}px`
+            textarea.style.left = `${e.clientX}px`
+            textarea.style.width = "100px"
+            textarea.style.height = "50px"
+            textarea.style.border = "none";
+            textarea.style.resize = "none"
+            textarea.style.outline = "none";
+            textarea.style.color = "rgba(255, 255, 255, 0.87)"
+            textarea.style.fontSize = "24px"
+
+            this.textareaParent.appendChild(textarea)
+
+            this.isTyping = true
+            this.textStartX = this.startX
+            this.textStartY = this.startY
+
+            setTimeout(() => {
+                textarea.focus();
+                textarea.addEventListener("input", () => {
+                    textarea.style.width = "auto";
+                    textarea.style.width = textarea.scrollWidth + "2px";
+                    textarea.style.height = "auto";
+                    textarea.style.height = textarea.scrollHeight + "2px";
+                });
+            }, 0);
+        } else if (this.isTyping && this.selectedTool == 'Text' && this.textareaParent.childElementCount !== 0 && e.target !== this.textareaParent.firstChild) {
+
+            this.isTyping = false
+            let textarea = this.textareaParent.firstElementChild
+            let text = (textarea as HTMLTextAreaElement)?.value
+
+            this.textareaParent.innerHTML = ""
+
+            const lines = text.split("\n")
+            const fontSize = 24;
+            if (lines.every(line => line.trim() === "")) return;
+
+            const shape: Text = {
+                type: "text",
+                lines: [],
+                id: this.getId()
+            };
+
+
+            lines.forEach((text, index) => {
+                const x = this.textStartX
+                const y = this.textStartY + (index * fontSize)
+                alert(`${fontSize} : ${y} ${lines.length}`)
+                if (text !== "") {
+                    //@ts-ignore
+                    shape.lines.push({
+                        text: text,
+                        x,
+                        y
+                    })
+
+                    this.ctx.fillText(
+                        text,
+                        x,
+                        y);
+                }
+
+            });
+
+            this.sendMessage('create', shape)
+            this.undo.push(shape)
+            this.redo = []
+        }
 
         this.canvas.addEventListener('mousemove', this.mouseMoveHandler)
     }
@@ -570,6 +666,8 @@ export class Draw {
             shape = this.pencil
             this.pencil = { type: 'pencil', points: [], id: this.getId() }
         } else if (this.selectedTool == 'eraser') {
+            return
+        } else {
             return
         }
 
@@ -646,11 +744,10 @@ export class Draw {
     KeyDownHandler = (e: KeyboardEvent) => {
         if (!e.ctrlKey) return;
 
-        // Stop browser default undo/redo
-        e.preventDefault();
-
         if (e.key.toLowerCase() === 'z') {
             // Undo
+            // Stop browser default undo/redo
+            e.preventDefault();
             if (this.undo.length === 0) {
                 return;
             }
@@ -663,6 +760,8 @@ export class Draw {
             this.clearCanvasAndDraw()
         } else if (e.key.toLowerCase() === 'y') {
             // Redo
+            // Stop browser default undo/redo
+            e.preventDefault();
             if (this.redo.length === 0) return;
 
             const shape = this.redo.pop()!
@@ -672,12 +771,18 @@ export class Draw {
         }
     }
 
+    doubleClickHandler = (e: MouseEvent) => {
+        alert("doubleClick")
+    }
+
     initMouseHandler = () => {
         this.canvas.addEventListener('mousedown', this.mouseDownHandler)
 
         this.canvas.addEventListener('mouseup', this.mouseUpHandler)
 
         this.canvas.addEventListener('wheel', this.mouseWheelHandler, { passive: false })
+
+        // this.canvas.addEventListener("dblclick", this.doubleClickHandler)
 
         document.body.addEventListener('keydown', this.KeyDownHandler, { passive: false })
     }
@@ -690,6 +795,8 @@ export class Draw {
         this.canvas.removeEventListener('wheel', this.mouseWheelHandler)
 
         this.canvas.removeEventListener('keydown', this.KeyDownHandler)
+
+        // this.canvas.addEventListener("dblclick", this.doubleClickHandler)
     }
 
 }

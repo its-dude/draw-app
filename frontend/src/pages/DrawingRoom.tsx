@@ -9,11 +9,12 @@ import { DrawingArea } from '../components/DrawingArea'
 export function DrawingRoom({ userId }: { userId: string | null }) {
 
     const canvasRef = useRef<HTMLCanvasElement>(null)
-    const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil'| 'eraser'>("rect")
+    const [selectedTool, setSelectedTool] = useState<'rect' | 'circle' | 'line' | 'pencil' | 'eraser' | 'Text'>("rect")
     const [socket, setSocket] = useState<WebSocket | null>(null)
     const [draw, setDraw] = useState<Draw | null>(null)
     const [roomId, setRoomId] = useState<string>("")
     const [rooms, setRooms] = useState()
+    const textareaRef = useRef<HTMLDivElement>(null)
     const [joinRoomId, setJoinRoomId] = useState<string>("")
     const [modalType, setModalType] = useState<'join_room' | 'share_room' | null>(null);
     const SECRET = getSecret()
@@ -71,11 +72,12 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
     }, [roomId])
 
     useEffect(() => {
-        if (canvasRef.current && roomId && socket) {
-            canvasRef.current.width = window.innerWidth
-            canvasRef.current.height = window.innerHeight
+        if (canvasRef.current && textareaRef.current && roomId && socket) {
 
-            const c = new Draw(canvasRef.current, roomId,setRoomId, setModalType, socket)
+            canvasRef.current.width = canvasRef.current.clientWidth ;
+            canvasRef.current.height = canvasRef.current.clientHeight;
+
+            const c = new Draw(canvasRef.current, roomId, setRoomId, setModalType, socket, textareaRef.current)
             setDraw(c)
 
             return () => {
@@ -83,23 +85,23 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
             }
 
         }
-    }, [roomId, canvasRef,joinRoomId, socket])
+    }, [roomId, canvasRef, textareaRef, joinRoomId, socket])
 
 
     useEffect(() => {
-        if(selectedTool === 'eraser' && canvasRef.current){
+        if (selectedTool === 'eraser' && canvasRef.current) {
             canvasRef.current.style.cursor = "url(\"data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20width='24'%20height='24'%20viewBox='0%200%2032%2032'%3E%3Ccircle%20cx='16'%20cy='16'%20r='8'%20fill='black'%20stroke='white'%20stroke-width='2'/%3E%3C/svg%3E\") 16 16, auto";
-        }else if(selectedTool !== 'eraser' && canvasRef.current){
-            canvasRef.current.style.cursor= ""
+        } else if (selectedTool !== 'eraser' && canvasRef.current) {
+            canvasRef.current.style.cursor = ""
         }
-        console.log("tool changed: ",selectedTool)
+        console.log("tool changed: ", selectedTool)
         draw?.setTool(selectedTool)
 
     }, [selectedTool, canvasRef, draw])
 
     return <>
         <JoinShareModal
-            socket={socket} 
+            socket={socket}
             modalType={modalType}
             roomId={roomId}
             joinRoomId={joinRoomId}
@@ -115,5 +117,6 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
         {
             socket && <DrawingArea setModalType={setModalType} selectedTool={selectedTool} setSelectedTool={setSelectedTool} canvasRef={canvasRef} />
         }
+        <div ref={textareaRef} className='textarea-wrapper '></div>
     </>
 }

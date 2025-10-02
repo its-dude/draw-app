@@ -150,7 +150,7 @@ export default function initSocket(server: Server) {
 
                 const message = parsedData.message
 
-                if (message.action === "create") {
+                if (message.action === "create"){
                     let chat = await Chat.create({
                         userId: user.userId,
                         roomId: room._id,

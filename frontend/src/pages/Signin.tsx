@@ -47,7 +47,7 @@ export function Signin({setUserId}: {setUserId: React.Dispatch<React.SetStateAct
             })
     }
 
-    return <div className="w-screen h-screen flex justify-center items-center bg-pink-200">
+    return <div className="w-screen h-screen flex justify-center items-center bg-gray-200">
         {/* main code started */}
         <div className="w-72 max-w-82 rounded-md border-0 shadow px-6 py-8 bg-white flex gap-4 flex-col justify-center ">
             <FormHeader heading="Sign In" message="Welcome back, let's start doodling" />

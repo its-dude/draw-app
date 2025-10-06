@@ -50,7 +50,7 @@ type Pencil = BaseShape & {
 type Text = BaseShape & {
     type: 'text',
     id: string,
-    lines: { text: string, x: number, y: number }[]
+    lines: { text: string, x: number, y: number, width: number, height: number }[]
 }
 
 type Shape = Rect | Circle | Line | Pencil | Text;
@@ -64,8 +64,6 @@ export class Draw {
     private setModalType: React.Dispatch<React.SetStateAction<'join_room' | 'share_room' | null>>
     private textareaParent: HTMLDivElement
     private isTyping: boolean = false
-    private textStartX: number = 0
-    private textStartY: number = 0
     private startX: number = 0
     private startY: number = 0
     private radius: number = 0
@@ -125,6 +123,7 @@ export class Draw {
                     this.serverShapes.push(parsedShape.shape)
                 } else if (parsedShape.action === 'delete') {
                     this.serverShapes = this.serverShapes.filter(shape => shape.id !== parsedShape.shape.id)
+                    this.undo = this.undo.filter(shape => shape.id !== parsedShape.shape.id)
                 }
                 this.clearCanvasAndDraw()
             } else if (message.message === "room_joined") {
@@ -352,6 +351,16 @@ export class Draw {
 
         this.viewportTransform.x -= e.deltaX
         this.viewportTransform.y -= e.deltaY
+
+        if (this.isTyping) {
+            const textarea = document.querySelector('#typing-area') as HTMLTextAreaElement
+            const currentTop = parseFloat(textarea.style.top || "0");
+            const currentLeft = parseFloat(textarea.style.left || "0");
+
+            textarea.style.top = `${currentTop - e.deltaY}px`;
+            textarea.style.left = `${currentLeft - e.deltaX}px`;
+
+        }
     }
 
     private render = () => {
@@ -417,6 +426,10 @@ export class Draw {
                     eraserY >= Math.min(shape.y, shape.y + shape.height) &&
                     eraserY <= Math.max(shape.y, shape.y + shape.height)
                 );
+            } else if (shape.type === 'text') {
+
+                hit = this.isTextHit(eraserX, eraserY, shape)
+
             } else if (shape.type === 'line') {
                 hit = this.eraseLine(eraserX, eraserY, shape.startX, shape.startY, shape.endX, shape.endY);
             } else if (shape.type === 'circle') {
@@ -440,6 +453,9 @@ export class Draw {
 
         const serverResult = this.eraseFirstShape(this.serverShapes, eraserX, eraserY);
         this.serverShapes = serverResult.remainingShapes;
+        console.log("servershape: ", this.serverShapes)
+        console.log("remianingshape: ", serverResult.remainingShapes)
+        console.log("delteted: ", serverResult.deletedShape)
         if (serverResult.deletedShape) {
             this.sendMessage('delete', serverResult.deletedShape);
             return; // stop after deleting one shape
@@ -452,6 +468,21 @@ export class Draw {
         }
     }
 
+    private isTextHit(eraserX: number, eraserY: number, text: Text): boolean {
+        for (const line of text.lines) {
+            const { x, y, width, height } = line;
+
+            if (
+                eraserX >= x &&
+                eraserX <= x + width &&
+                eraserY >= y &&
+                eraserY <= y + height
+            ) {
+                return true;
+            }
+        }
+        return false;
+    }
 
     private eraseLine(ex: number, ey: number, x1: number, y1: number, x2: number, y2: number) {
         const dx = x2 - x1;
@@ -497,7 +528,7 @@ export class Draw {
         return Math.sqrt((px - closestX) ** 2 + (py - closestY) ** 2);
     }
 
-    private erasePencil(ex: number, ey: number, points: { x: number, y: number, thickness: number }[], eraserRadius: number = 8): boolean {
+    private erasePencil(ex: number, ey: number, points: { x: number, y: number, thickness: number }[], eraserRadius: number = 4): boolean {
         for (let i = 0; i < points.length - 1; i++) {
             const d = this.pointToSegmentDistance(ex, ey, points[i].x, points[i].y, points[i + 1].x, points[i + 1].y);
             if (d <= eraserRadius + points[i].thickness / 2) {
@@ -545,35 +576,48 @@ export class Draw {
         if (!this.isTyping && this.selectedTool == 'Text') {
             const textarea = document.createElement("textarea")
             textarea.style.position = "absolute"
-            textarea.style.top = `${e.clientY}px`
-            textarea.style.left = `${e.clientX}px`
+            textarea.style.top = `${e.clientY - this.viewportTransform.y}px`
+            textarea.style.left = `${e.clientX - this.viewportTransform.x}px`
             textarea.style.width = "100px"
             textarea.style.height = "50px"
-            textarea.style.border = "none";
-            textarea.style.resize = "none"
-            textarea.style.outline = "none";
+            // textarea.style.border = "none";
+            // textarea.style.resize = "none"
+            // textarea.style.outline = "none";
+            textarea.style.whiteSpace = "pre";  // keeps text on the same line
+            textarea.style.overflow = "hidden"; // hides scrollbars
+
             textarea.style.color = "rgba(255, 255, 255, 0.87)"
             textarea.style.fontSize = "24px"
+            textarea.id = "typing-area"
 
             this.textareaParent.appendChild(textarea)
 
             this.isTyping = true
-            this.textStartX = this.startX
-            this.textStartY = this.startY
 
             setTimeout(() => {
                 textarea.focus();
                 textarea.addEventListener("input", () => {
                     textarea.style.width = "auto";
-                    textarea.style.width = textarea.scrollWidth + "2px";
+                    textarea.style.width = (textarea.scrollWidth + 2) + "px";;
                     textarea.style.height = "auto";
-                    textarea.style.height = textarea.scrollHeight + "2px";
+                    textarea.style.height = (textarea.scrollHeight + 2) + "px";
                 });
             }, 0);
         } else if (this.isTyping && this.selectedTool == 'Text' && this.textareaParent.childElementCount !== 0 && e.target !== this.textareaParent.firstChild) {
 
             this.isTyping = false
-            let textarea = this.textareaParent.firstElementChild
+            const textarea = document.querySelector('#typing-area') as HTMLTextAreaElement
+
+            // get current screen coordinates
+            const screenX = parseFloat(textarea.style.left || "0");
+            const screenY = parseFloat(textarea.style.top || "0");
+
+            // convert to canvas coordinates
+            const canvasCoords = this.getCanvasCoordinate(screenX, screenY);
+
+            const x = canvasCoords.x;
+            const y = canvasCoords.y;
+
             let text = (textarea as HTMLTextAreaElement)?.value
 
             this.textareaParent.innerHTML = ""
@@ -590,21 +634,27 @@ export class Draw {
 
 
             lines.forEach((text, index) => {
-                const x = this.textStartX
-                const y = this.textStartY + (index * fontSize)
-                alert(`${fontSize} : ${y} ${lines.length}`)
+
+
                 if (text !== "") {
-                    //@ts-ignore
+                    const metrics = this.ctx.measureText(text);
+                    const width = metrics.width;
+                    const height = fontSize; // approximate
+                    const lineY = y + (index * fontSize)
+
                     shape.lines.push({
                         text: text,
                         x,
-                        y
+                        y: lineY - fontSize,
+                        width,
+                        height
                     })
 
                     this.ctx.fillText(
                         text,
                         x,
-                        y);
+                        lineY
+                    );
                 }
 
             });
@@ -771,7 +821,7 @@ export class Draw {
         }
     }
 
-    doubleClickHandler = (e: MouseEvent) => {
+    doubleClickHandler = () => {
         alert("doubleClick")
     }
 

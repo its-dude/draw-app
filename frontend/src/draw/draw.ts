@@ -453,9 +453,6 @@ export class Draw {
 
         const serverResult = this.eraseFirstShape(this.serverShapes, eraserX, eraserY);
         this.serverShapes = serverResult.remainingShapes;
-        console.log("servershape: ", this.serverShapes)
-        console.log("remianingshape: ", serverResult.remainingShapes)
-        console.log("delteted: ", serverResult.deletedShape)
         if (serverResult.deletedShape) {
             this.sendMessage('delete', serverResult.deletedShape);
             return; // stop after deleting one shape
@@ -580,11 +577,11 @@ export class Draw {
             textarea.style.left = `${e.clientX - this.viewportTransform.x}px`
             textarea.style.width = "100px"
             textarea.style.height = "50px"
-            // textarea.style.border = "none";
-            // textarea.style.resize = "none"
-            // textarea.style.outline = "none";
-            textarea.style.whiteSpace = "pre";  // keeps text on the same line
-            textarea.style.overflow = "hidden"; // hides scrollbars
+            textarea.style.border = "none";
+            textarea.style.resize = "none"
+            textarea.style.outline = "none";
+            textarea.style.whiteSpace = "pre"; 
+
 
             textarea.style.color = "rgba(255, 255, 255, 0.87)"
             textarea.style.fontSize = "24px"

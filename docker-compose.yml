@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: draw-app-backend
+    ports: 
+      - "3000:3000"
+    environment:
+      MONGO_URI: mongodb://mongo:27017/draw-app
+      JWT_SECRET: DEVELOPMENT
+      JWT_EXPIRES_IN: 8h
+      PORT: 3000
+    depends_on:
+      - mongo
+  frontend:
+    build: ./frontend
+    container_name: draw-app-frontend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - backend
+  mongo:
+    image: mongo:7.0
+    container_name: draw-app-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:

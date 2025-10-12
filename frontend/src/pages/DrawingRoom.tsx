@@ -51,7 +51,7 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
 
     useEffect(() => {
         if (!roomId) return
-        console.log(roomId)
+        console.log(roomId,rooms)
         const ws = new WebSocket(`ws://localhost:3000?token=${SECRET}`)
 
         ws.onopen = () => {

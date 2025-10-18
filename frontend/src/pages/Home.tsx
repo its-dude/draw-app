@@ -1,7 +1,15 @@
+import axios from "axios";
+import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { Backend_URL } from "../config";
 
 export default function Home() {
     const navigate = useNavigate()
+
+    useEffect(()=>{
+        axios.get(Backend_URL)
+        .catch(()=>{console.log("server is sleeping...")})
+    })
 
     return (
 

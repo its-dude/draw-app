@@ -5,6 +5,7 @@ import axios from 'axios'
 import { getSecret } from '../config'
 import { JoinShareModal } from "../components/RoomModal";
 import { DrawingArea } from '../components/DrawingArea'
+import { Backend_URL } from '../config'
 
 export function DrawingRoom({ userId }: { userId: string | null }) {
 
@@ -21,7 +22,7 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
 
     useEffect(() => {
 
-        axios.get('http://localhost:3000/api/user/rooms', {
+        axios.get(Backend_URL + '/user/rooms', {
             headers: {
                 Authorization: `Bearer ${SECRET}`
             }
@@ -30,7 +31,7 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
                 const rooms = result.data
 
                 if (rooms.length === 0) {
-                    axios.post('http://localhost:3000/api/user/room/create', { slug: `room_${userId}` },
+                    axios.post(Backend_URL + '/user/room/create', { slug: `room_${userId}` },
                         {
                             headers: {
                                 Authorization: `Bearer ${SECRET}`
@@ -51,8 +52,8 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
 
     useEffect(() => {
         if (!roomId) return
-        console.log(roomId,rooms)
-        const ws = new WebSocket(`ws://localhost:3000?token=${SECRET}`)
+        console.log(roomId, rooms)
+        const ws = new WebSocket(getWebSocketURL(Backend_URL, SECRET as string))
 
         ws.onopen = () => {
             setSocket(ws)
@@ -74,7 +75,7 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
     useEffect(() => {
         if (canvasRef.current && textareaRef.current && roomId && socket) {
 
-            canvasRef.current.width = canvasRef.current.clientWidth ;
+            canvasRef.current.width = canvasRef.current.clientWidth;
             canvasRef.current.height = canvasRef.current.clientHeight;
 
             const c = new Draw(canvasRef.current, roomId, setRoomId, setModalType, socket, textareaRef.current)
@@ -98,6 +99,17 @@ export function DrawingRoom({ userId }: { userId: string | null }) {
         draw?.setTool(selectedTool)
 
     }, [selectedTool, canvasRef, draw])
+
+    function getWebSocketURL(backendUrl: string, token: string) {
+        // Determine ws or wss based on http/https
+        let wsUrl = backendUrl.replace(/^http/, 'ws');
+
+        // Remove trailing /api if exists
+        wsUrl = wsUrl.replace(/\/api$/, '');
+
+        // Append token as query param
+        return `${wsUrl}?token=${token}`;
+    }
 
     return <>
         <JoinShareModal

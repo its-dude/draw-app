@@ -6,7 +6,11 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN npm run build   # output goes to /app/dist or build folder depending on your config
+
+ARG VITE_BACKEND_URL
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+
+RUN npm run build  
 
 
 # -------- Stage 2: Nginx to serve static files ----------
@@ -17,9 +21,6 @@ RUN rm -rf /usr/share/nginx/html/*
 
 # Copy built project from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy optional nginx configuration (for custom ports, routing, SPA support)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 # Default port Nginx listens on
 EXPOSE 80

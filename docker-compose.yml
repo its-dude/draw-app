@@ -17,7 +17,7 @@ services:
     build: ./frontend
     container_name: draw-app-frontend
     ports:
-      - "5000:5000"
+      - "5000:80"
     depends_on:
       - backend
   mongo:

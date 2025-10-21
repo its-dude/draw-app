@@ -53,7 +53,7 @@ export function Signin({setUserId}: {setUserId: React.Dispatch<React.SetStateAct
             <FormHeader heading="Sign In" message="Welcome back, let's start doodling" />
             <InputBox type="text" placeholder="username" onChange={(e) => setUsername(e.target.value)} />
             <InputBox type="password" placeholder="password" onChange={(e) => setPassword(e.target.value)} />
-            <Button buttonText="Create Account" onClick={buttonOnClickHandler} isLoading={isLoading} />
+            <Button buttonText="sign in" onClick={buttonOnClickHandler} isLoading={isLoading} />
             <BottomWarning to="/signup" toText="sign up" message="Don't have an account?" />
             {requestFailedMessage !== null && <RequestFailed requestFailedMessage={requestFailedMessage} />}
         </div>

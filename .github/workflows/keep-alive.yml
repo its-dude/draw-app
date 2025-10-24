@@ -1,0 +1,23 @@
+name: Keep Render Frontend & Backend Awake
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"   # every 10 minutes
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Ping Backend
+        run: |
+          echo "Pinging Backend..."
+          status=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.RENDER_BACKEND_URL }})
+          echo "Backend responded with: $status"
+
+      - name: Ping Frontend
+        run: |
+          echo "Pinging Frontend..."
+          status=$(curl -s -o /dev/null -w "%{http_code}" ${{ secrets.RENDER_FRONTEND_URL }})
+          echo "Frontend responded with: $status"
